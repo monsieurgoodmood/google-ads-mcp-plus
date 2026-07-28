@@ -1,7 +1,8 @@
 # google-ads-mcp-plus
 
-**The official Google Ads MCP (read) + a safe write layer to create campaigns
-— paused-by-default, with a dry-run mode, full docs and examples.**
+**The official Google Ads MCP (read) + a read-only account auditor + a safe
+write layer to create Search campaigns — paused-by-default, with a dry-run
+mode, full docs and examples.**
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](./LICENSE)
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue)
@@ -42,6 +43,16 @@ decision, not always acceptable for client work.
 **Read (official MCP):** GAQL queries, account discovery, resource metadata —
 all read-only, credentials stay on your machine.
 
+**Audit (this repo, read-only):**
+* `audit_account.py` runs 12 checks over any account and reports what is
+  costing you money: missing/secondary conversion actions, campaigns spending
+  with zero conversions, budget- and rank-lost impression share, wasteful
+  search terms, low Quality Score keywords, weak RSAs, disapproved ads, missing
+  negatives and sitelinks.
+* Text, Markdown, or JSON output. Exit code 1 on critical findings, so it works
+  as a cron/CI monitor.
+* **Never mutates anything** — GAQL queries only. See [`docs/audit.md`](docs/audit.md).
+
 **Write (this repo):**
 * One YAML config → budget → campaign → criteria (geo *presence* + language) →
   ad group → exact keywords (+ negatives) → Responsive Search Ad → assets
@@ -56,6 +67,57 @@ all read-only, credentials stay on your machine.
 * Best-effort **policy-exemption** handling for restricted categories
   (e.g. Local Services).
 * Idempotent re-runs via an opt-in `--replace` (never destructive by surprise).
+
+## 2b. Scope — what this does and does not do
+
+Be clear about this before you invest time.
+
+**Audit is packaged.** This repo ships an audit module with 12 read-only
+checks (see [`docs/audit.md`](docs/audit.md)), extensible by adding one
+function. Beyond those, write your own GAQL.
+
+**Read is unlimited.** The official MCP exposes GAQL, so every readable
+resource is reachable: campaigns, ad groups, keywords, ads, assets, audiences,
+conversions, search terms, Quality Score, change history, recommendations. If
+you can write the query, you can read it.
+
+**Write is deliberately narrow.** The write layer creates **one new Search
+campaign** from a config file. That is its entire job.
+
+| Area | Supported | Not supported |
+|---|---|---|
+| Campaign type | **Search only** | Performance Max, Display, Shopping, Video, Demand Gen, App |
+| Operation | Create (plus delete via `--replace`) | Update, pause, enable, change budgets, edit ads |
+| Bidding | `maximize_clicks`, `manual_cpc` | tCPA, tROAS, Maximize conversions, portfolio strategies |
+| Keywords | Exact match + negatives | Phrase, positive broad, shared sets |
+| Structure | One ad group, one RSA | Multiple ad groups or ads per run |
+| Targeting | Geo + language | Audiences, remarketing, Customer Match, demographics, devices, ad schedule |
+| Assets | Call, sitelinks, callouts, structured snippets | Images, logos, promotions, prices, lead forms, PMax asset groups |
+| Other | — | Creating conversion actions, drafts/experiments, labels, bid adjustments |
+
+This narrowness is a design choice, not an oversight. Every additional campaign
+type multiplies the surface area for expensive mistakes in a tool that spends
+real money. A small, well-tested write path beats a broad, shaky one.
+
+Contributions extending this are welcome — see
+[Contributing](#12-contributing) — provided they keep the safety model intact.
+
+## 2c. Audit an account in one command
+
+Once credentials are set up ([`docs/setup-oauth.md`](docs/setup-oauth.md)):
+
+```bash
+python src/audit/audit_account.py --customer-id 1234567890
+```
+
+Client-ready Markdown report over 90 days:
+
+```bash
+python src/audit/audit_account.py --customer-id 1234567890 \
+  --days 90 --format markdown --output audit.md
+```
+
+Full reference: [`docs/audit.md`](docs/audit.md).
 
 ## 3. Quick start
 
