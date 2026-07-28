@@ -1,0 +1,6 @@
+# Write layer (campaign creation). Use a recent version that supports the
+# contains_eu_political_advertising field (Google Ads API >= v19.2 / v20.1 / v21;
+# current versions are v21-v23). The library version is independent of the API
+# version it talks to.
+google-ads>=25.0.0
+PyYAML>=6.0

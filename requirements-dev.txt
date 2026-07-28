@@ -1,0 +1,2 @@
+# Offline tests for the validators — no API, no credentials needed.
+pytest>=7.0

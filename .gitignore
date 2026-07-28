@@ -1,0 +1,52 @@
+# =============================================================================
+# SECRETS / CREDENTIALS — never commit. Verify this file before every `git add`.
+# =============================================================================
+.env
+*.env
+!.env.example
+application_default_credentials.json
+*application_default_credentials*.json
+*credentials*.json
+*client_secret*.json
+client_id*.json
+service-account*.json
+*.pem
+*.key
+google-ads.yaml          # the google-ads library's secret config
+
+# Your private campaign config(s). The example/template is kept.
+config.yaml
+config.yml
+config.*.yaml
+config.*.yml
+!config.example.yaml
+!examples/*.yaml
+
+# =============================================================================
+# Python
+# =============================================================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# =============================================================================
+# OS / editors
+# =============================================================================
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo

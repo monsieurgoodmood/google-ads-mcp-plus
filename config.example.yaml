@@ -1,0 +1,78 @@
+# =============================================================================
+# google-ads-mcp-plus — campaign config TEMPLATE
+# -----------------------------------------------------------------------------
+# Copy this file to a private config (e.g. config.yaml — already gitignored),
+# fill in YOUR values, and run:
+#   python src/write_layer/create_campaign.py --config config.yaml --validate-only
+#   python src/write_layer/create_campaign.py --config config.yaml --dry-run
+#   python src/write_layer/create_campaign.py --config config.yaml --live
+#
+# Everything below is a PLACEHOLDER. There is no real account data in this repo.
+# Character limits are enforced by the script; if a value is too long the run
+# stops and tells you exactly which field and by how much.
+# =============================================================================
+
+account:
+  customer_id: "YOUR_CUSTOMER_ID"        # digits only, e.g. 1234567890 (no dashes)
+  login_customer_id: "YOUR_MCC_ID"       # optional manager (MCC) ID; remove if none
+  currency_check: "USD"                  # guard: the run aborts if the account's
+                                         # currency differs (currency is fixed at
+                                         # account creation and cannot change)
+
+campaign:
+  name: "Example - Search - EN"
+  daily_budget: 20                       # in the account currency
+  bidding: "maximize_clicks"             # or "manual_cpc"
+  cpc_ceiling: 5                         # optional CPC bid ceiling (account currency)
+  network: "search_only"                 # Search only (no Search partners, no Display)
+  call_country_code: "US"                # ISO country for the call asset, if used
+  geo:
+    target: "City Name, Region, Country" # resolved via geoTargetConstants
+    country_code: "US"                   # optional ISO hint to disambiguate the name
+    mode: "presence"                     # "presence" = people physically there (recommended)
+  language: "en"                         # language code, e.g. en / fr / es / ar
+
+ad_group:
+  name: "Example - Exact"
+  keywords_exact:                        # brackets optional; match type is set to EXACT
+    - "[example keyword]"
+    - "[another keyword]"
+  negatives:                             # added as ad-group negative (broad) keywords
+    - "free"
+    - "jobs"
+    - "diy"
+
+rsa:                                     # Responsive Search Ad
+  final_url: "https://example.com/"      # REQUIRED — landing page
+  final_mobile_url: ""                   # optional
+  headlines:                             # 3-15 items, each <= 30 chars
+    - "Headline One"
+    - "Headline Two"
+    - "Headline Three"
+  descriptions:                          # 2-4 items, each <= 90 chars
+    - "First description line under ninety characters."
+    - "Second description line under ninety characters."
+  path1: "path1"                         # display-URL path, <= 15 chars
+  path2: "path2"                         # display-URL path, <= 15 chars
+
+assets:                                  # all optional
+  call: "+10000000000"                   # E.164 phone number
+  sitelinks:                             # string = text only (uses rsa.final_url),
+    - "Sitelink One"                     # or a mapping for text + url + descriptions
+    - "Sitelink Two"
+    - "Sitelink Three"
+    - "Sitelink Four"
+  callouts:                              # each <= 25 chars
+    - "Free Quotes"
+    - "Licensed & Insured"
+  structured_snippets:
+    - header: "Service catalog"          # MUST be a valid Google header (see below)
+      values:                            # >= 3 values, each <= 25 chars
+        - "Installation"
+        - "Repair"
+        - "Maintenance"
+
+# Valid structured-snippet headers (English locale). NOTE: "Services" is NOT
+# valid — use "Service catalog".
+#   Amenities, Brands, Courses, Degree programs, Destinations, Featured hotels,
+#   Insurance coverage, Models, Neighborhoods, Service catalog, Shows, Styles, Types

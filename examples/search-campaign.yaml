@@ -1,0 +1,75 @@
+# =============================================================================
+# Worked example — a generic local plumber Search campaign (English).
+# This is illustrative only: placeholder account, placeholder phone, example.com.
+# It demonstrates a realistic restricted-category case (home services often hit
+# the "Local Services" policy and may require advertiser verification — see
+# docs/policies.md).
+# =============================================================================
+
+account:
+  customer_id: "YOUR_CUSTOMER_ID"
+  currency_check: "USD"
+
+campaign:
+  name: "Plumber - Search - Austin - EN"
+  daily_budget: 30
+  bidding: "maximize_clicks"
+  cpc_ceiling: 6
+  network: "search_only"
+  call_country_code: "US"
+  geo:
+    target: "Austin, Texas, United States"
+    country_code: "US"
+    mode: "presence"
+  language: "en"
+
+ad_group:
+  name: "Emergency Plumber - Exact"
+  keywords_exact:
+    - "[emergency plumber]"
+    - "[24 hour plumber]"
+    - "[plumber near me]"
+    - "[burst pipe repair]"
+  negatives:
+    - "free"
+    - "jobs"
+    - "salary"
+    - "course"
+    - "diy"
+
+rsa:
+  final_url: "https://example.com/plumbing"
+  headlines:
+    - "24/7 Emergency Plumber"
+    - "Fast Local Plumbing Help"
+    - "Licensed Austin Plumbers"
+    - "Same-Day Pipe Repair"
+    - "Upfront, Honest Pricing"
+  descriptions:
+    - "Burst pipe or blocked drain? Licensed plumbers on call around the clock."
+    - "Book in minutes and get a free upfront quote. Serving the Austin area."
+  path1: "plumbing"
+  path2: "austin"
+
+assets:
+  call: "+15125550000"
+  sitelinks:
+    - text: "Emergency Service"
+      url: "https://example.com/plumbing/emergency"
+      description1: "Around-the-clock help"
+      description2: "Calls answered fast"
+    - "Drain Cleaning"
+    - "Water Heaters"
+    - "Get a Free Quote"
+  callouts:
+    - "Free Quotes"
+    - "Licensed & Insured"
+    - "Upfront Pricing"
+    - "Same-Day Service"
+  structured_snippets:
+    - header: "Service catalog"
+      values:
+        - "Drain Cleaning"
+        - "Leak Repair"
+        - "Water Heaters"
+        - "Pipe Replacement"
