@@ -206,46 +206,59 @@ def check_account_overview(client, customer_id: str, ctx: AuditContext) -> List[
 
 
 def _biddable_goals(client, customer_id: str) -> Optional[List[str]]:
-    """Return biddable goal categories, or None if the account is not goal-based.
+    """Return biddable goal categories, or None if biddability can't be read.
 
     Google Ads has TWO mechanisms for deciding what bidding optimises toward:
 
     * the legacy per-action flag ``conversion_action.primary_for_goal``, and
-    * account-level goals (``customer_conversion_goal``) with a ``biddability``
-      field, which is what modern accounts and Performance Max actually use.
+    * account-level goals (``customer_conversion_goal``), which is what modern
+      accounts and Performance Max actually use.
 
     Checking only the legacy flag reports "nothing is primary" on a perfectly
-    well-configured goal-based account. So we check goals first.
+    well-configured goal-based account, so goals are checked first.
 
-    The ``biddability`` field is not selectable in every API version, hence the
-    fallback query.
+    The biddable flag is spelled ``biddable`` in current API versions and
+    ``biddability`` in some others, hence the cascade. ``[]`` means "goal-based
+    but nothing biddable" (a real problem); ``None`` means "could not
+    determine", which the caller reports honestly rather than guessing.
     """
-    q_with = """
-        SELECT customer_conversion_goal.category, customer_conversion_goal.origin,
-               customer_conversion_goal.biddability
-        FROM customer_conversion_goal
-    """
-    q_without = """
-        SELECT customer_conversion_goal.category, customer_conversion_goal.origin
-        FROM customer_conversion_goal
-    """
-    try:
-        rows = list(run_query(client, customer_id, q_with))
-    except Exception:  # noqa: BLE001 - field unavailable in this API version
-        try:
-            rows = list(run_query(client, customer_id, q_without))
-        except Exception:  # noqa: BLE001 - account is not goal-based at all
-            return None
-        # Without the biddability field we cannot tell which goals are biddable.
-        return [] if not rows else ["<biddability not selectable in this API version>"]
-
-    if not rows:
-        return None
-    return [
-        row.customer_conversion_goal.category.name
-        for row in rows
-        if getattr(row.customer_conversion_goal, "biddability", False)
+    attempts = [
+        ("biddable", """
+            SELECT customer_conversion_goal.category,
+                   customer_conversion_goal.origin,
+                   customer_conversion_goal.biddable
+            FROM customer_conversion_goal
+        """),
+        ("biddability", """
+            SELECT customer_conversion_goal.category,
+                   customer_conversion_goal.origin,
+                   customer_conversion_goal.biddability
+            FROM customer_conversion_goal
+        """),
     ]
+
+    for field, query in attempts:
+        # The client library logs a scary "IsFault: True" line whenever a query
+        # is rejected. Probing field names is expected here, so quiet it —
+        # otherwise a normal audit looks like it failed.
+        ads_logger = logging.getLogger("google.ads.googleads.client")
+        previous = ads_logger.level
+        ads_logger.setLevel(logging.CRITICAL)
+        try:
+            rows = list(run_query(client, customer_id, query))
+        except Exception:  # noqa: BLE001 - field not selectable in this version
+            continue
+        finally:
+            ads_logger.setLevel(previous)
+        if not rows:
+            return None
+        return [
+            row.customer_conversion_goal.category.name
+            for row in rows
+            if getattr(row.customer_conversion_goal, field, False)
+        ]
+
+    return None
 
 
 def check_conversion_tracking(client, customer_id: str, ctx: AuditContext) -> List[Finding]:
