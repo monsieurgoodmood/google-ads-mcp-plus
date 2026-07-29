@@ -142,3 +142,17 @@ def test_missing_square_image_rejected():
 def test_missing_logo_rejected():
     errs = pmax.validate_pmax_content(_spec(logo_asset_ids=[]))
     assert any("logo_asset_ids" in e for e in errs)
+
+
+def test_require_images_false_allows_text_only_validation():
+    """The drafting path must be able to return valid with no image IDs."""
+    spec = _spec()
+    for k in ("marketing_image_asset_ids", "square_marketing_image_asset_ids",
+              "logo_asset_ids"):
+        spec[k] = []
+    assert pmax.validate_pmax_content(spec, require_images=False) == []
+
+
+def test_require_images_false_still_checks_text():
+    spec = _spec(headlines=["One"])
+    assert pmax.validate_pmax_content(spec, require_images=False) != []

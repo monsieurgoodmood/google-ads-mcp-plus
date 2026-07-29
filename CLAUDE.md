@@ -57,7 +57,7 @@ change, tell them plainly: the server must be restarted with
 | `add_negative_keywords` | **Lowest.** Spend can only go down. | Max 100 per call. |
 | `update_campaign_budget` | Medium. Bounded by ceiling + max change %. | |
 | `set_campaign_status` | **Highest.** `ENABLED` starts spending immediately. | |
-| `create_performance_max_campaign` | **High.** Hundreds of operations in one atomic mutate. Created PAUSED, so it cannot spend on its own — but it is the largest single change this server makes. | |
+| `create_performance_max_campaign` | **High.** One atomic mutate of roughly 25-60 operations, depending on how many assets are linked. Created PAUSED, so it cannot spend on its own — but it is the largest single change this server makes. | |
 
 **Performance Max** creation IS an MCP tool
 (`create_performance_max_campaign`), and it is the largest write this server

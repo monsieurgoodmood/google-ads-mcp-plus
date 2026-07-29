@@ -63,11 +63,15 @@ class PMaxConfigError(ValueError):
     """Raised when the requested Performance Max campaign cannot be built."""
 
 
-def validate_pmax_content(spec: Dict[str, Any]) -> List[str]:
+def validate_pmax_content(spec: Dict[str, Any],
+                          require_images: bool = True) -> List[str]:
     """Offline validation of a PMax spec. Returns a list of problems.
 
     Runs with no credentials and no network, so a caller can check ad copy long
     before touching an account.
+
+    ``require_images=False`` skips the image checks, for callers that are only
+    validating text while drafting copy. Creation always requires images.
     """
     errors: List[str] = []
 
@@ -129,17 +133,18 @@ def validate_pmax_content(spec: Dict[str, Any]) -> List[str]:
     # Google requires all three image types on a Performance Max asset group.
     # Catching this offline gives a clear message instead of an opaque API
     # rejection after the whole request has been built.
-    for field, label in (
-        ("marketing_image_asset_ids", "marketing image (1.91:1)"),
-        ("square_marketing_image_asset_ids", "square marketing image (1:1)"),
-        ("logo_asset_ids", "logo (1:1)"),
-    ):
-        if not (spec.get(field) or []):
-            errors.append(
-                f"{field}: Performance Max requires at least one {label}. "
-                "This tool reuses existing assets by ID — find them with a GAQL "
-                "query on the `asset` resource, it never uploads images."
-            )
+    if require_images:
+        for field, label in (
+            ("marketing_image_asset_ids", "marketing image (1.91:1)"),
+            ("square_marketing_image_asset_ids", "square marketing image (1:1)"),
+            ("logo_asset_ids", "logo (1:1)"),
+        ):
+            if not (spec.get(field) or []):
+                errors.append(
+                    f"{field}: Performance Max requires at least one {label}. "
+                    "This tool reuses existing assets by ID — find them with a "
+                    "GAQL query on the `asset` resource, it never uploads images."
+                )
 
     return errors
 

@@ -446,10 +446,23 @@ def build_server():
         old = current["current_budget"]
         # Hard limits — enforced in code, not negotiable by the model.
         if new_daily_budget > CONFIG.max_daily_budget:
+            hint = ""
+            if old > CONFIG.max_daily_budget:
+                # Common and confusing: the ceiling is set below budgets that
+                # already exist, so this tool can never touch those campaigns —
+                # while the audit may still be recommending an increase.
+                hint = (
+                    f" Note: this campaign's CURRENT budget ({old}) is already "
+                    f"above the ceiling, so no change to it can be approved "
+                    "while the ceiling stays here. The ceiling only constrains "
+                    "values this server sets; it does not cap existing spend. "
+                    "If the audit is recommending an increase here, raise "
+                    "GOOGLE_ADS_MAX_DAILY_BUDGET deliberately or make the change "
+                    "in the Google Ads UI."
+                )
             raise ValueError(
                 f"Refused: {new_daily_budget} exceeds the server's "
-                f"max_daily_budget of {CONFIG.max_daily_budget}. Raise "
-                "GOOGLE_ADS_MAX_DAILY_BUDGET deliberately if this is intended."
+                f"max_daily_budget of {CONFIG.max_daily_budget}.{hint}"
             )
         if old > 0:
             change = abs(new_daily_budget - old) / old * 100
@@ -749,11 +762,16 @@ def build_server():
     def validate_pmax_assets(headlines: List[str], long_headlines: List[str],
                              descriptions: List[str], business_name: str,
                              final_url: str = "https://example.com") -> str:
-        """Check Performance Max assets against Google's limits — offline.
+        """Check Performance Max TEXT assets against Google's limits — offline.
 
         No account, no credentials needed. Use this while drafting copy, before
         creating anything: at least 3 headlines (30 chars), 1 long headline
         (90 chars), 2 descriptions (90 chars), and a business name (25 chars).
+
+        This checks text only. Creating a campaign additionally requires at
+        least one marketing image (1.91:1), one square marketing image (1:1),
+        and one logo — those are validated by
+        create_performance_max_campaign, not here.
         """
         errors = pmax.validate_pmax_content({
             "headlines": headlines,
@@ -762,9 +780,12 @@ def build_server():
             "business_name": business_name,
             "final_url": final_url,
             "daily_budget": 1,  # placeholder: not validated here
-        })
-        return json.dumps({"valid": not errors, "errors": errors}, indent=2,
-                          ensure_ascii=False)
+        }, require_images=False)
+        return json.dumps({
+            "valid": not errors,
+            "errors": errors,
+            "scope": "text assets only — images are checked at creation time",
+        }, indent=2, ensure_ascii=False)
 
     @mcp.tool()
     def validate_ad_copy(headlines: List[str], descriptions: List[str],
