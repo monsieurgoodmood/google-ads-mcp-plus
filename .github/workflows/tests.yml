@@ -1,0 +1,62 @@
+name: Tests
+
+# The whole suite is offline: no Google Ads credentials, no network calls, no
+# secrets. That is deliberate — it means anyone can fork this and CI just works.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Run tests
+        run: pytest -q
+
+      - name: Check the console entry points exist
+        run: |
+          google-ads-plus-audit --customer-id 0 --list-checks
+          google-ads-plus-campaign --help > /dev/null
+          google-ads-mcp-plus --help > /dev/null || true
+
+  secret-scan:
+    # A public repo that touches ad accounts must never grow a committed
+    # credential. This fails the build if one appears.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Refuse committed credentials
+        run: |
+          set -e
+          echo "Scanning for credential files..."
+          if git ls-files | grep -iE '(^|/)\.env$|credentials.*\.json|client_secret|google-ads\.yaml|^config\.yaml$|mutations\.jsonl'; then
+            echo "::error::A credential or output file is tracked by git."
+            exit 1
+          fi
+          echo "Scanning for secret-looking values..."
+          if git grep -nIE '(client_secret|refresh_token)"?\s*[:=]\s*"[A-Za-z0-9_-]{15,}' -- . ':!*.md' ':!.gitignore'; then
+            echo "::error::A hard-coded secret appears to be committed."
+            exit 1
+          fi
+          echo "Clean."
