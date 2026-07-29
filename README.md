@@ -107,7 +107,7 @@ decision, and often a non-starter for client work.
 
 ---
 
-## The 11 tools
+## The 13 tools
 
 **Read — always available**
 
@@ -126,7 +126,9 @@ decision, and often a non-starter for client work.
 |---|---|
 | `update_campaign_budget` | Bounded by ceiling and max-change %. |
 | `set_campaign_status` | Pause or enable. Enabling warns that spend starts. |
-| `add_negative_keywords` | Safest write: spend can only go down. Max 100/call. |
+| `add_negative_keywords` | Per-campaign negatives. Safest write: spend can only go down. |
+| `apply_negative_keyword_list` | **Shared** negative list — one edit updates every linked campaign. Idempotent. |
+| `create_shopping_campaign` | Standard Shopping: budget, campaign, ad group, product ad, and an exhaustive listing group tree. Created PAUSED. |
 | `create_performance_max_campaign` | One atomic mutate. The preview runs the API's own `validate_only`, so real API errors surface before anything exists. Created PAUSED. |
 
 ### The 13 audit checks
@@ -153,7 +155,7 @@ for expensive mistakes in a tool that spends real money.
 
 | Area | Supported | Not yet |
 |---|---|---|
-| Campaign type | **Search** (CLI) and **Performance Max** (MCP tool) | Display, Shopping, Video, Demand Gen, App |
+| Campaign type | **Search** (CLI), **Performance Max** and **Standard Shopping** (MCP tools) | Display, Video, Demand Gen, App |
 | Operation | Create; update budgets, pause/enable, add negatives | Editing existing ads, bulk restructuring |
 | Bidding | Search: max clicks, manual CPC. PMax: max conversions / conversion value, optional tCPA or tROAS | Changing an existing campaign's strategy, portfolio strategies |
 | Targeting | Geo, language, ad schedule, negatives | Audiences, remarketing, Customer Match, demographics, devices |
@@ -236,7 +238,7 @@ does not help with deceptive content or policy circumvention.
 
 ## Tests
 
-80 tests, fully offline — no API, no credentials:
+90 tests, fully offline — no API, no credentials:
 
 ```bash
 pip install -e ".[dev]" && pytest -q

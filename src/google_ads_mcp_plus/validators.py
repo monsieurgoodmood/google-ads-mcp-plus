@@ -29,9 +29,12 @@ Nothing in this file ever calls the API or reads secrets.
 
 from __future__ import annotations
 
+import logging
 import unicodedata
 from dataclasses import dataclass, field
 from typing import Iterable, List, Optional
+
+logger = logging.getLogger("google-ads-mcp-plus.validators")
 
 
 # --------------------------------------------------------------------------- #
@@ -144,9 +147,16 @@ def check_list(
 def check_snippet_header(header: str, collector: _Collector) -> None:
     """Validate a structured-snippet header against Google's allowed list."""
     if header not in ALLOWED_SNIPPET_HEADERS:
-        collector.add(
-            f"structured_snippet header {header!r} is not a valid Google header. "
-            f"Use one of: {', '.join(sorted(ALLOWED_SNIPPET_HEADERS))}"
+        # NOT an error. Google localises the header set per language: a French
+        # account legitimately uses "Modèles" or "Services", a German one uses
+        # its own. Hard-failing on the English list would break every
+        # non-English advertiser on valid content. The API validates headers
+        # itself and reports them clearly, so we log and move on.
+        logger.info(
+            "structured_snippet header %r is not in the English header list. "
+            "Headers are language-specific, so this may be correct for your "
+            "account's language — Google will validate it. English headers: %s",
+            header, ", ".join(sorted(ALLOWED_SNIPPET_HEADERS)),
         )
 
 

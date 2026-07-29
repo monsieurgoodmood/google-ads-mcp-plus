@@ -62,7 +62,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from . import audit, pmax
+from . import audit, pmax, shopping
 from . import validators
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
@@ -786,6 +786,150 @@ def build_server():
             "errors": errors,
             "scope": "text assets only — images are checked at creation time",
         }, indent=2, ensure_ascii=False)
+
+    @mcp.tool()
+    def create_shopping_campaign(
+        customer_id: str,
+        campaign_name: str,
+        daily_budget: float,
+        merchant_id: str,
+        feed_label: str,
+        include_values: List[str],
+        dimension: str = "product_type_level1",
+        ad_group_name: str = "",
+        campaign_priority: int = 0,
+        geo_target_ids: Optional[List[int]] = None,
+        language_ids: Optional[List[int]] = None,
+        confirm_token: str = "",
+    ) -> str:
+        """Create a Standard Shopping campaign, PAUSED. Two-phase.
+
+        Builds budget, campaign, ad group, an empty product ad, and an
+        exhaustive listing group tree: one biddable node per included value,
+        plus a mandatory excluded catch-all for everything else.
+
+        Without a token you get a preview validated by the API; call again with
+        the token to create it.
+
+        Args:
+            customer_id: Account to create in. Must be allowlisted.
+            campaign_name: Name of the new campaign.
+            daily_budget: Daily budget in account currency.
+            merchant_id: Merchant Center account holding the product feed.
+            feed_label: Feed label, exactly as it appears in Merchant Center.
+                        This replaced sales_country.
+            include_values: Values to bid on, e.g. the exact product_type
+                            strings from Merchant Center. Everything else is
+                            excluded.
+            dimension: product_type_level1/2/3, brand, condition, or item_id.
+            ad_group_name: Defaults to the campaign name.
+            campaign_priority: 0 low, 1 medium, 2 high. Decides which campaign
+                               bids when several cover the same product.
+            geo_target_ids: Geo target constant IDs.
+            language_ids: Language constant IDs (1002 French, 1000 English).
+            confirm_token: Token from the preview call. Omit for a preview.
+        """
+        require_writes()
+        cid = require_allowed(customer_id)
+
+        if daily_budget > CONFIG.max_daily_budget:
+            raise ValueError(
+                f"Refused: {daily_budget} exceeds the server's max_daily_budget "
+                f"of {CONFIG.max_daily_budget}."
+            )
+
+        spec = {
+            "campaign_name": campaign_name,
+            "daily_budget": daily_budget,
+            "merchant_id": merchant_id,
+            "feed_label": feed_label,
+            "include_values": include_values,
+            "dimension": dimension,
+            "ad_group_name": ad_group_name or campaign_name,
+            "campaign_priority": campaign_priority,
+            "geo_target_ids": geo_target_ids or [],
+            "language_ids": language_ids or [],
+        }
+        payload = {"customer_id": cid, "spec": spec}
+
+        if not confirm_token:
+            preview = shopping.create_shopping_campaign(
+                get_client(), cid, spec, validate_only=True)
+            token = stage("create_shopping", payload)
+            preview["confirm_token"] = token
+            preview["next_step"] = (
+                "Review, then call again with confirm_token and identical "
+                "parameters."
+            )
+            return json.dumps(preview, indent=2, ensure_ascii=False)
+
+        redeem(confirm_token, "create_shopping", payload)
+        result = shopping.create_shopping_campaign(
+            get_client(), cid, spec, validate_only=False)
+        log_mutation("create_shopping_campaign", cid, None, campaign_name,
+                     {"campaign_id": result.get("campaign_id"),
+                      "daily_budget": daily_budget})
+        return json.dumps(result, indent=2, ensure_ascii=False)
+
+    @mcp.tool()
+    def apply_negative_keyword_list(
+        customer_id: str,
+        list_name: str,
+        keywords: List[str],
+        campaign_ids: List[str],
+        match_type: str = "PHRASE",
+        confirm_token: str = "",
+    ) -> str:
+        """Create or extend a SHARED negative keyword list. Two-phase.
+
+        Prefer this over add_negative_keywords whenever the same exclusions
+        apply to several campaigns: one shared list means one edit updates them
+        all, instead of duplicating negatives campaign by campaign.
+
+        Idempotent — an existing list of the same name is reused, and only
+        missing keywords and links are added. Running it twice does nothing.
+
+        Args:
+            customer_id: Account holding the campaigns.
+            list_name: Name of the shared list, e.g. "Brand exclusions".
+            keywords: Terms to exclude.
+            campaign_ids: Campaigns the list applies to.
+            match_type: EXACT, PHRASE, or BROAD. PHRASE is the usual choice.
+            confirm_token: Token from the preview call. Omit for a preview.
+        """
+        require_writes()
+        cid = require_allowed(customer_id)
+        if len(keywords) > 500:
+            raise ValueError(
+                "Refused: more than 500 keywords in one call. Split into "
+                "batches you can actually review."
+            )
+
+        payload = {"customer_id": cid, "list_name": list_name,
+                   "keywords": list(keywords),
+                   "campaign_ids": [str(c) for c in campaign_ids],
+                   "match_type": match_type.upper()}
+
+        if not confirm_token:
+            preview = shopping.apply_negative_list(
+                get_client(), cid, list_name, keywords,
+                [str(c) for c in campaign_ids], match_type, validate_only=True)
+            token = stage("negative_list", payload)
+            preview["confirm_token"] = token
+            preview["next_step"] = (
+                "Review the keyword list, then call again with confirm_token."
+            )
+            return json.dumps(preview, indent=2, ensure_ascii=False)
+
+        redeem(confirm_token, "negative_list", payload)
+        result = shopping.apply_negative_list(
+            get_client(), cid, list_name, keywords,
+            [str(c) for c in campaign_ids], match_type, validate_only=False)
+        log_mutation("apply_negative_keyword_list", cid, None,
+                     result.get("keywords_added"),
+                     {"list_name": list_name,
+                      "campaigns": result.get("campaigns_linked")})
+        return json.dumps(result, indent=2, ensure_ascii=False)
 
     @mcp.tool()
     def validate_ad_copy(headlines: List[str], descriptions: List[str],

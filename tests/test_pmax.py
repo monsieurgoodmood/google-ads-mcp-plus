@@ -156,3 +156,69 @@ def test_require_images_false_allows_text_only_validation():
 def test_require_images_false_still_checks_text():
     spec = _spec(headlines=["One"])
     assert pmax.validate_pmax_content(spec, require_images=False) != []
+
+
+# --------------------------------------------------------------------------- #
+# Shopping — offline spec validation
+# --------------------------------------------------------------------------- #
+from google_ads_mcp_plus import shopping  # noqa: E402
+
+
+def _shop(**over):
+    base = {
+        "campaign_name": "Shopping | Pans",
+        "daily_budget": 20,
+        "merchant_id": 123456,
+        "feed_label": "EUR_1234",
+        "include_values": ["pan"],
+        "dimension": "product_type_level1",
+    }
+    base.update(over)
+    return base
+
+
+def test_valid_shopping_spec():
+    assert shopping.validate_shopping_spec(_shop()) == []
+
+
+def test_merchant_id_required():
+    errs = shopping.validate_shopping_spec(_shop(merchant_id=None))
+    assert any("merchant_id" in e for e in errs)
+
+
+def test_feed_label_required():
+    """feed_label replaced sales_country and must match Merchant Center."""
+    errs = shopping.validate_shopping_spec(_shop(feed_label=""))
+    assert any("feed_label" in e for e in errs)
+
+
+def test_include_values_required():
+    errs = shopping.validate_shopping_spec(_shop(include_values=[]))
+    assert any("include_values" in e for e in errs)
+
+
+def test_bad_priority_rejected():
+    errs = shopping.validate_shopping_spec(_shop(campaign_priority=5))
+    assert any("campaign_priority" in e for e in errs)
+
+
+def test_all_priorities_accepted():
+    for p in (0, 1, 2):
+        assert shopping.validate_shopping_spec(_shop(campaign_priority=p)) == []
+
+
+def test_unknown_dimension_rejected():
+    errs = shopping.validate_shopping_spec(_shop(dimension="colour"))
+    assert any("dimension" in e for e in errs)
+
+
+def test_every_documented_dimension_is_supported():
+    for dim in shopping.PRODUCT_DIMENSIONS:
+        assert shopping.validate_shopping_spec(_shop(dimension=dim)) == []
+
+
+def test_create_refuses_invalid_spec_before_any_api_call():
+    """client=None proves validation happened offline."""
+    with pytest.raises(shopping.ShoppingConfigError):
+        shopping.create_shopping_campaign(None, "123", _shop(feed_label=""),
+                                          validate_only=True)

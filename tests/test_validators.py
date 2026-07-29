@@ -114,15 +114,25 @@ def test_sitelink_object_description_over_limit_fails():
     assert any("description1" in e for e in v.validate_campaign_content(cfg))
 
 
-def test_invalid_snippet_header_fails():
+def test_localised_snippet_header_is_not_blocked():
+    """Google localises snippet headers: French accounts use 'Modeles',
+    'Services'. Hard-failing on the English list would break every
+    non-English advertiser on perfectly valid content."""
+    for header in ("Services", "Modeles", "Dienstleistungen"):
+        cfg = _min_cfg()
+        cfg["assets"] = {
+            "structured_snippets": [{"header": header, "values": ["A", "B", "C"]}]
+        }
+        errors = v.validate_campaign_content(cfg)
+        assert not any("header" in e for e in errors), f"{header} was blocked"
+
+
+def test_snippet_still_requires_enough_values():
     cfg = _min_cfg()
     cfg["assets"] = {
-        "structured_snippets": [
-            {"header": "Services", "values": ["A", "B", "C"]}
-        ]
+        "structured_snippets": [{"header": "Services", "values": ["A", "B"]}]
     }
-    errors = v.validate_campaign_content(cfg)
-    assert any("not a valid Google header" in e for e in errors)
+    assert v.validate_campaign_content(cfg)
 
 
 def test_valid_snippet_header_passes():
