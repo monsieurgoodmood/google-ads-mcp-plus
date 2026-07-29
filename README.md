@@ -96,9 +96,9 @@ campaign** from a config file. That is its entire job.
 
 | Area | Supported | Not supported |
 |---|---|---|
-| Campaign type | **Search only** | Performance Max, Display, Shopping, Video, Demand Gen, App |
-| Operation | Create (CLI); via MCP: update budgets, pause/enable, add negatives | Editing ads, bulk restructuring |
-| Bidding | `maximize_clicks`, `manual_cpc` | tCPA, tROAS, Maximize conversions, portfolio strategies |
+| Campaign type | **Search** (CLI) and **Performance Max** (MCP tool) | Display, Shopping, Video, Demand Gen, App |
+| Operation | Create; via MCP: update budgets, pause/enable, add negatives | Editing existing ads, bulk restructuring |
+| Bidding | Search: `maximize_clicks`, `manual_cpc`. PMax: maximize conversions / conversion value, with optional tCPA or tROAS | Changing the strategy of an existing campaign, portfolio strategies |
 | Keywords | Exact match + negatives | Phrase, positive broad, shared sets |
 | Structure | One ad group, one RSA | Multiple ad groups or ads per run |
 | Targeting | Geo + language | Audiences, remarketing, Customer Match, demographics, devices, ad schedule |

@@ -57,12 +57,25 @@ change, tell them plainly: the server must be restarted with
 | `add_negative_keywords` | **Lowest.** Spend can only go down. | Max 100 per call. |
 | `update_campaign_budget` | Medium. Bounded by ceiling + max change %. | |
 | `set_campaign_status` | **Highest.** `ENABLED` starts spending immediately. | |
+| `create_performance_max_campaign` | **High.** Hundreds of operations in one atomic mutate. Created PAUSED, so it cannot spend on its own — but it is the largest single change this server makes. | |
 
-Campaign *creation* is not an MCP tool. It lives in the CLI
+**Performance Max** creation IS an MCP tool
+(`create_performance_max_campaign`), and it is the largest write this server
+performs. Its preview runs the API's own `validate_only` check, so the preview
+catches real API errors before anything exists — read that preview carefully
+before confirming.
+
+**Search** campaign creation is NOT an MCP tool. It lives in the CLI
 (`google-ads-plus-campaign`) because a YAML file the user can read and diff is a
 better review surface than a tool call with twenty parameters. If the user wants
-a new campaign, help them write the config and walk them through the CLI — see
-§7.
+a Search campaign, help them write the config and walk them through the CLI —
+see §7.
+
+⚠️ **The CLI does not share this server's safety model.** It has no account
+allowlist, no budget ceiling, no confirmation token, and no mutation log, and it
+accepts `--enable` (creates ENABLED) and `--replace` (permanently REMOVEs a
+campaign of the same name). Never suggest running it with those flags casually,
+and always tell the user what a command will do before they paste it.
 
 ---
 

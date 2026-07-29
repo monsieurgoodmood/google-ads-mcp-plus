@@ -173,3 +173,32 @@ def test_log_mutation_survives_unwritable_path(monkeypatch):
 def test_digits_strips_formatting():
     assert srv.digits("123-456-7890") == "1234567890"
     assert srv.digits("  99 99  ") == "9999"
+
+
+# --------------------------------------------------------------------------- #
+# Numeric limits must not be silently disabled
+# --------------------------------------------------------------------------- #
+def test_nan_budget_limit_falls_back_to_default(monkeypatch):
+    """float('nan') parses fine but defeats every comparison — must be refused."""
+    monkeypatch.setenv("GOOGLE_ADS_MAX_DAILY_BUDGET", "nan")
+    assert srv.ServerConfig.from_env().max_daily_budget == 100.0
+
+
+def test_infinite_budget_limit_falls_back(monkeypatch):
+    monkeypatch.setenv("GOOGLE_ADS_MAX_DAILY_BUDGET", "inf")
+    assert srv.ServerConfig.from_env().max_daily_budget == 100.0
+
+
+def test_negative_budget_limit_falls_back(monkeypatch):
+    monkeypatch.setenv("GOOGLE_ADS_MAX_DAILY_BUDGET", "-5")
+    assert srv.ServerConfig.from_env().max_daily_budget == 100.0
+
+
+def test_garbage_budget_limit_falls_back(monkeypatch):
+    monkeypatch.setenv("GOOGLE_ADS_MAX_DAILY_BUDGET", "beaucoup")
+    assert srv.ServerConfig.from_env().max_daily_budget == 100.0
+
+
+def test_valid_budget_limit_is_used(monkeypatch):
+    monkeypatch.setenv("GOOGLE_ADS_MAX_DAILY_BUDGET", "250.5")
+    assert srv.ServerConfig.from_env().max_daily_budget == 250.5

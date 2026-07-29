@@ -126,6 +126,21 @@ def validate_pmax_content(spec: Dict[str, Any]) -> List[str]:
             f"of {MAX_CAMPAIGN_CALLOUTS}"
         )
 
+    # Google requires all three image types on a Performance Max asset group.
+    # Catching this offline gives a clear message instead of an opaque API
+    # rejection after the whole request has been built.
+    for field, label in (
+        ("marketing_image_asset_ids", "marketing image (1.91:1)"),
+        ("square_marketing_image_asset_ids", "square marketing image (1:1)"),
+        ("logo_asset_ids", "logo (1:1)"),
+    ):
+        if not (spec.get(field) or []):
+            errors.append(
+                f"{field}: Performance Max requires at least one {label}. "
+                "This tool reuses existing assets by ID — find them with a GAQL "
+                "query on the `asset` resource, it never uploads images."
+            )
+
     return errors
 
 
@@ -174,8 +189,18 @@ def build_operations(client, customer_id: str, spec: Dict[str, Any]):
             c.maximize_conversions.target_cpa_micros = int(
                 round(float(spec["target_cpa"]) * 1_000_000))
 
-    # Keep traffic on the chosen landing page unless explicitly allowed to expand.
-    c.url_expansion_opt_out = bool(spec.get("url_expansion_opt_out", True))
+    # Keep traffic on the chosen landing page unless explicitly allowed to
+    # expand. This field has moved across API versions (present on Campaign in
+    # v21, absent in v25), so set it defensively rather than crashing on a
+    # version that does not expose it.
+    if spec.get("url_expansion_opt_out", True):
+        try:
+            c.url_expansion_opt_out = True
+        except AttributeError:
+            logger.info(
+                "url_expansion_opt_out is not available on Campaign in this "
+                "API version; final URL expansion keeps its account default."
+            )
     # False keeps BUSINESS_NAME and LOGO in the asset group (see module docstring).
     c.brand_guidelines_enabled = False
     # Required on creation since API v19.2/v20.1 or the mutate is rejected.

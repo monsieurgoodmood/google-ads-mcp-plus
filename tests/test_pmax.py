@@ -26,6 +26,9 @@ from google_ads_mcp_plus import pmax  # noqa: E402
 
 def _spec(**over):
     base = {
+        "marketing_image_asset_ids": [111],
+        "square_marketing_image_asset_ids": [222],
+        "logo_asset_ids": [333],
         "campaign_name": "PMax | Test",
         "daily_budget": 50,
         "final_url": "https://example.com/lp",
@@ -123,3 +126,19 @@ def test_execute_refuses_invalid_spec_before_any_api_call():
     """Validation must fail offline — client=None proves no API call happened."""
     with pytest.raises(pmax.PMaxConfigError):
         pmax.execute(None, "1234567890", _spec(headlines=[]), validate_only=True)
+
+
+def test_missing_marketing_image_rejected():
+    """Google requires all three image types on a PMax asset group."""
+    errs = pmax.validate_pmax_content(_spec(marketing_image_asset_ids=[]))
+    assert any("marketing_image_asset_ids" in e for e in errs)
+
+
+def test_missing_square_image_rejected():
+    errs = pmax.validate_pmax_content(_spec(square_marketing_image_asset_ids=[]))
+    assert any("square_marketing_image_asset_ids" in e for e in errs)
+
+
+def test_missing_logo_rejected():
+    errs = pmax.validate_pmax_content(_spec(logo_asset_ids=[]))
+    assert any("logo_asset_ids" in e for e in errs)

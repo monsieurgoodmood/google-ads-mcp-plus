@@ -12,7 +12,9 @@ client_id*.json
 service-account*.json
 *.pem
 *.key
-google-ads.yaml          # the google-ads library's secret config
+# Git does NOT support trailing comments on pattern lines — a comment here
+# would become part of the pattern and silently stop ignoring the file.
+google-ads.yaml
 
 # Your private campaign config(s). The example/template is kept.
 config.yaml
@@ -55,3 +57,11 @@ Thumbs.db
 *.egg-info/
 build/
 dist/
+
+# Audit and mutation outputs — these contain campaign names, search terms,
+# and user e-mail addresses pulled from real accounts. Never commit them.
+audit.json
+audit*.md
+mutations.jsonl
+*_out.json
+*-report.json

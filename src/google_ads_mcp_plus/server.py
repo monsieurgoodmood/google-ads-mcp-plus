@@ -75,6 +75,30 @@ SERVER_NAME = "google-ads-mcp-plus"
 # Configuration — all safety limits come from the environment, never from the
 # model. The model cannot change any of these by asking.
 # --------------------------------------------------------------------------- #
+def _safe_limit(name: str, raw: str, default: float) -> float:
+    """Parse a numeric safety limit, refusing values that would disable it.
+
+    ``float("nan")`` parses fine and then silently defeats every comparison
+    (``x > nan`` is always False), which would turn a budget ceiling into no
+    ceiling at all. Same for infinity and negatives. A limit that cannot be
+    trusted is worse than no limit, so we fall back to the default and say so.
+    """
+    import math
+
+    try:
+        value = float(raw)
+    except (TypeError, ValueError):
+        logger.warning("%s=%r is not a number. Using default %s.", name, raw, default)
+        return default
+    if math.isnan(value) or math.isinf(value) or value <= 0:
+        logger.warning(
+            "%s=%r is not a usable limit (nan, infinity, or <= 0) and would "
+            "disable the guard entirely. Using default %s.", name, raw, default
+        )
+        return default
+    return value
+
+
 @dataclass
 class ServerConfig:
     allowed_customers: List[str]
@@ -109,10 +133,12 @@ class ServerConfig:
             allowed_customers=allowed,
             writes_enabled=writes,
             login_customer_id=os.environ.get("GOOGLE_ADS_LOGIN_CUSTOMER_ID") or None,
-            max_daily_budget=float(os.environ.get("GOOGLE_ADS_MAX_DAILY_BUDGET", "100")),
-            max_budget_change_pct=float(
-                os.environ.get("GOOGLE_ADS_MAX_BUDGET_CHANGE_PCT", "50")
-            ),
+            max_daily_budget=_safe_limit(
+                "GOOGLE_ADS_MAX_DAILY_BUDGET",
+                os.environ.get("GOOGLE_ADS_MAX_DAILY_BUDGET", "100"), 100.0),
+            max_budget_change_pct=_safe_limit(
+                "GOOGLE_ADS_MAX_BUDGET_CHANGE_PCT",
+                os.environ.get("GOOGLE_ADS_MAX_BUDGET_CHANGE_PCT", "50"), 50.0),
             mutation_log=Path(
                 os.environ.get("GOOGLE_ADS_MUTATION_LOG", "mutations.jsonl")
             ),
