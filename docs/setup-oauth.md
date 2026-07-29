@@ -222,7 +222,7 @@ Once the above is done, confirm read access end-to-end with the official MCP
 repo's dry run:
 
 ```bash
-python src/write_layer/create_campaign.py --config config.yaml --dry-run
+google-ads-plus-campaign --config config.yaml --dry-run
 ```
 
 A successful dry run means: content validated, account reachable, currency

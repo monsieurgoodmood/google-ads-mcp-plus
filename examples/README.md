@@ -23,8 +23,7 @@ valid config filled in correctly, including:
 You can validate it right now, with no credentials and no network:
 
 ```bash
-python ../src/write_layer/create_campaign.py \
-  --config search-campaign.yaml --validate-only
+google-ads-plus-campaign --config search-campaign.yaml --validate-only
 ```
 
 It should report that the config is OK.

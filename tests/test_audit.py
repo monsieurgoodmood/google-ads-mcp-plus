@@ -1,4 +1,4 @@
-# Copyright 2026 Arthur Choisnet / ByteBerry Analytics LLC
+# Copyright 2026 ByteBerry Analytics LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -28,7 +28,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from audit import audit_account as aa  # noqa: E402
+from google_ads_mcp_plus import audit as aa  # noqa: E402
 
 
 # --------------------------------------------------------------------------- #

@@ -29,7 +29,7 @@ Always walk the three steps in order. Each is a superset of the previous one.
 ### 1. `--validate-only` (offline)
 
 ```bash
-python src/write_layer/create_campaign.py \
+google-ads-plus-campaign \
   --config config.yaml --validate-only
 ```
 
@@ -46,7 +46,7 @@ non-zero. Fix them before moving on.
 ### 2. `--dry-run` (reads the account, writes nothing)
 
 ```bash
-python src/write_layer/create_campaign.py \
+google-ads-plus-campaign \
   --config config.yaml --dry-run
 ```
 
@@ -64,7 +64,7 @@ It does **not** create anything. This is the last checkpoint before writing.
 ### 3. `--live` (creates everything, PAUSED)
 
 ```bash
-python src/write_layer/create_campaign.py \
+google-ads-plus-campaign \
   --config config.yaml --live
 ```
 

@@ -1,0 +1,64 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "google-ads-mcp-plus"
+version = "0.1.0"
+description = "Google Ads MCP server with read, audit, and guarded write tools — allowlisted accounts, two-phase confirmation, paused by default."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Apache-2.0" }
+authors = [
+    { name = "ByteBerry Analytics" },
+]
+keywords = [
+    "google-ads",
+    "mcp",
+    "model-context-protocol",
+    "claude",
+    "ppc",
+    "advertising",
+    "marketing-automation",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Office/Business :: Financial",
+]
+
+dependencies = [
+    "google-ads>=25.0.0",
+    "PyYAML>=6.0",
+    # Pinned below 2.0 deliberately: mcp v2 renames the bundled FastMCP class,
+    # which would break the import in server.py. Upgrade intentionally.
+    "mcp>=1.28,<2",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0"]
+
+[project.urls]
+Homepage = "https://github.com/monsieurgoodmood/google-ads-mcp-plus"
+Repository = "https://github.com/monsieurgoodmood/google-ads-mcp-plus"
+Issues = "https://github.com/monsieurgoodmood/google-ads-mcp-plus/issues"
+
+[project.scripts]
+# The MCP server — this is the one MCP clients launch.
+google-ads-mcp-plus = "google_ads_mcp_plus.server:main"
+# CLI equivalents, for people who prefer a terminal to a chat window.
+google-ads-plus-audit = "google_ads_mcp_plus.audit:main"
+google-ads-plus-campaign = "google_ads_mcp_plus.create_campaign:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["google_ads_mcp_plus*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

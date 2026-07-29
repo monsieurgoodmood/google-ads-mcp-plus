@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright 2026 Arthur Choisnet / ByteBerry Analytics LLC
+# Copyright 2026 ByteBerry Analytics LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -50,9 +50,8 @@ from typing import Dict, List, Optional
 
 # Keep google-ads imports OUT of module top-level so that --validate-only and
 # the unit tests run with no client library and no credentials.
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import config_loader  # noqa: E402
-import validators  # noqa: E402
+from . import config_loader  # noqa: E402
+from . import validators  # noqa: E402
 
 logger = logging.getLogger("google-ads-mcp-plus")
 

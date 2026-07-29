@@ -4,3 +4,8 @@
 # version it talks to.
 google-ads>=25.0.0
 PyYAML>=6.0
+
+# MCP server. Pinned below 2.0 deliberately: mcp v2 renames the bundled
+# FastMCP class (mcp.server.fastmcp.FastMCP), which would break the import in
+# src/mcp_server/server.py. Upgrade intentionally, not by accident.
+mcp>=1.28,<2

@@ -5,7 +5,7 @@ money or hiding your data. It issues **only** GAQL `search` queries — it has n
 mutate path at all, so it is safe to point at any production account.
 
 ```bash
-python src/audit/audit_account.py --customer-id 1234567890
+google-ads-plus-audit --customer-id 1234567890
 ```
 
 ---
@@ -15,13 +15,14 @@ python src/audit/audit_account.py --customer-id 1234567890
 List them at any time, no credentials required:
 
 ```bash
-python src/audit/audit_account.py --customer-id 0 --list-checks
+google-ads-plus-audit --customer-id 0 --list-checks
 ```
 
 | Check | Severity | What it catches |
 |---|---|---|
 | `account_overview` | info | Spend, conversions, clicks for the window. Flags **auto-tagging disabled** as critical. |
-| `conversion_tracking` | critical | No enabled conversion action, or none marked **Primary** — bidding has no goal. |
+| `conversion_tracking` | critical | No enabled conversion action, or no biddable goal. Checks **goal-based** conversions (`customer_conversion_goal.biddability`) first and only falls back to the legacy `primary_for_goal` flag — checking only the legacy flag reports a false alarm on modern accounts. |
+| `recent_changes` | info | Who changed what in the last 30 days, and from which interface. Usually the first question when performance moves. |
 | `campaign_no_conversions` | critical | Enabled campaigns spending real money with zero conversions. |
 | `budget_limited` | critical/warning | Impression share lost to budget ≥10%. Critical when the campaign converts. |
 | `rank_lost` | warning | Impression share lost to ad rank ≥35% — bids or quality too low. |
@@ -53,7 +54,7 @@ python src/audit/audit_account.py --customer-id 0 --list-checks
 A client-ready Markdown report over 90 days:
 
 ```bash
-python src/audit/audit_account.py \
+google-ads-plus-audit \
   --customer-id 1234567890 --days 90 \
   --format markdown --output audit-client.md
 ```
@@ -61,14 +62,14 @@ python src/audit/audit_account.py \
 Machine-readable output for your own tooling:
 
 ```bash
-python src/audit/audit_account.py \
+google-ads-plus-audit \
   --customer-id 1234567890 --format json --output audit.json
 ```
 
 Through a manager account:
 
 ```bash
-python src/audit/audit_account.py \
+google-ads-plus-audit \
   --customer-id 1234567890 --login-customer-id 9876543210
 ```
 

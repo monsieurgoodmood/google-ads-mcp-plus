@@ -1,4 +1,4 @@
-# Copyright 2026 Arthur Choisnet / ByteBerry Analytics LLC
+# Copyright 2026 ByteBerry Analytics LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -31,7 +31,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 import pytest  # noqa: E402
 
-from write_layer import validators as v  # noqa: E402
+from google_ads_mcp_plus import validators as v  # noqa: E402
 
 
 # --------------------------------------------------------------------------- #

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright 2026 Arthur Choisnet / ByteBerry Analytics LLC
+# Copyright 2026 ByteBerry Analytics LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -205,8 +205,51 @@ def check_account_overview(client, customer_id: str, ctx: AuditContext) -> List[
     return out
 
 
+def _biddable_goals(client, customer_id: str) -> Optional[List[str]]:
+    """Return biddable goal categories, or None if the account is not goal-based.
+
+    Google Ads has TWO mechanisms for deciding what bidding optimises toward:
+
+    * the legacy per-action flag ``conversion_action.primary_for_goal``, and
+    * account-level goals (``customer_conversion_goal``) with a ``biddability``
+      field, which is what modern accounts and Performance Max actually use.
+
+    Checking only the legacy flag reports "nothing is primary" on a perfectly
+    well-configured goal-based account. So we check goals first.
+
+    The ``biddability`` field is not selectable in every API version, hence the
+    fallback query.
+    """
+    q_with = """
+        SELECT customer_conversion_goal.category, customer_conversion_goal.origin,
+               customer_conversion_goal.biddability
+        FROM customer_conversion_goal
+    """
+    q_without = """
+        SELECT customer_conversion_goal.category, customer_conversion_goal.origin
+        FROM customer_conversion_goal
+    """
+    try:
+        rows = list(run_query(client, customer_id, q_with))
+    except Exception:  # noqa: BLE001 - field unavailable in this API version
+        try:
+            rows = list(run_query(client, customer_id, q_without))
+        except Exception:  # noqa: BLE001 - account is not goal-based at all
+            return None
+        # Without the biddability field we cannot tell which goals are biddable.
+        return [] if not rows else ["<biddability not selectable in this API version>"]
+
+    if not rows:
+        return None
+    return [
+        row.customer_conversion_goal.category.name
+        for row in rows
+        if getattr(row.customer_conversion_goal, "biddability", False)
+    ]
+
+
 def check_conversion_tracking(client, customer_id: str, ctx: AuditContext) -> List[Finding]:
-    """No enabled PRIMARY conversion action = smart bidding has nothing to optimise."""
+    """No biddable conversion goal = smart bidding has nothing to optimise."""
     q = """
         SELECT conversion_action.name, conversion_action.status,
                conversion_action.type, conversion_action.primary_for_goal,
@@ -234,6 +277,37 @@ def check_conversion_tracking(client, customer_id: str, ctx: AuditContext) -> Li
         ))
         return out
 
+    goals = _biddable_goals(client, customer_id)
+
+    # Goal-based account: the goals decide, not the legacy per-action flag.
+    if goals is not None:
+        if goals:
+            out.append(Finding(
+                check="conversion_tracking",
+                severity=INFO,
+                entity="account",
+                message=(
+                    f"Goal-based conversions: {len(goals)} biddable goal(s) "
+                    f"({', '.join(goals[:5])}), across {len(enabled)} enabled "
+                    "conversion action(s)."
+                ),
+                detail={"biddable_goals": goals, "enabled_actions": enabled},
+            ))
+        else:
+            out.append(Finding(
+                check="conversion_tracking",
+                severity=CRITICAL,
+                entity="account",
+                message=(
+                    "This account uses goal-based conversions but NO goal is "
+                    "biddable. Smart bidding has nothing to optimise toward. "
+                    "Set at least one goal biddable in Goals > Conversions."
+                ),
+                detail={"enabled_actions": enabled},
+            ))
+        return out
+
+    # Legacy account: fall back to the per-action primary flag.
     if not primary:
         out.append(Finding(
             check="conversion_tracking",
@@ -255,6 +329,59 @@ def check_conversion_tracking(client, customer_id: str, ctx: AuditContext) -> Li
             detail={"primary": primary, "enabled": enabled},
         ))
     return out
+
+
+def check_recent_changes(client, customer_id: str, ctx: AuditContext) -> List[Finding]:
+    """Who changed what recently — the first question when performance moves.
+
+    The change_event resource is limited to the last 30 days by the API,
+    regardless of the audit window.
+    """
+    end = _dt.date.today()
+    start = end - _dt.timedelta(days=29)
+    q = f"""
+        SELECT change_event.change_date_time, change_event.change_resource_type,
+               change_event.changed_fields, change_event.user_email,
+               change_event.client_type, campaign.name
+        FROM change_event
+        WHERE change_event.change_date_time
+              BETWEEN '{start} 00:00:00' AND '{end} 23:59:59'
+          AND change_event.change_resource_type IN
+              ('CAMPAIGN', 'CAMPAIGN_BUDGET', 'CAMPAIGN_CRITERION', 'AD_GROUP')
+        ORDER BY change_event.change_date_time DESC
+        LIMIT 200
+    """
+    changes = []
+    for row in run_query(client, customer_id, q):
+        ev = row.change_event
+        changes.append({
+            "when": str(ev.change_date_time),
+            "resource": ev.change_resource_type.name,
+            "campaign": row.campaign.name,
+            "by": ev.user_email,
+            "via": ev.client_type.name,
+        })
+    if not changes:
+        return [Finding(
+            check="recent_changes",
+            severity=INFO,
+            entity="account",
+            message="No campaign-level changes recorded in the last 30 days.",
+        )]
+
+    who = sorted({c["by"] for c in changes if c["by"]})
+    return [Finding(
+        check="recent_changes",
+        severity=INFO,
+        entity="change history",
+        message=(
+            f"{len(changes)} change(s) in the last 30 days"
+            + (f", by: {', '.join(who[:5])}" if who else "")
+            + f". Most recent: {changes[0]['resource']} on "
+              f"'{changes[0]['campaign']}' ({changes[0]['when']})."
+        ),
+        detail={"changes": changes[:50]},
+    )]
 
 
 def check_campaigns_without_conversions(client, customer_id: str,
@@ -614,6 +741,7 @@ def check_single_ad_groups(client, customer_id: str, ctx: AuditContext) -> List[
 CHECKS: List[Callable] = [
     check_account_overview,
     check_conversion_tracking,
+    check_recent_changes,
     check_campaigns_without_conversions,
     check_budget_limited,
     check_rank_lost,

@@ -1,8 +1,8 @@
 # google-ads-mcp-plus
 
-**The official Google Ads MCP (read) + a read-only account auditor + a safe
-write layer to create Search campaigns — paused-by-default, with a dry-run
-mode, full docs and examples.**
+**Drive Google Ads from Claude: an MCP server with read, audit, and guarded
+write tools — allowlisted accounts, two-phase confirmation, paused-by-default,
+full docs and examples.**
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](./LICENSE)
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue)
@@ -42,6 +42,16 @@ decision, not always acceptable for client work.
 
 **Read (official MCP):** GAQL queries, account discovery, resource metadata —
 all read-only, credentials stay on your machine.
+
+**MCP server (this repo) — the main interface:**
+* Connect Claude Code (or any MCP client) and work in plain language: audit an
+  account, list campaigns, run GAQL, change budgets, pause/enable, add negatives.
+* **Writes are off by default** and require an explicit account allowlist.
+* **Two-phase commit:** every write returns a preview and a token first —
+  nothing changes until you confirm. Tokens are fingerprinted, single-use, and
+  expire in 10 minutes.
+* Hard budget ceilings enforced in code, plus an append-only mutation log.
+* Setup and the full tool list: [`docs/mcp-server.md`](docs/mcp-server.md).
 
 **Audit (this repo, read-only):**
 * `audit_account.py` runs 12 checks over any account and reports what is
@@ -87,7 +97,7 @@ campaign** from a config file. That is its entire job.
 | Area | Supported | Not supported |
 |---|---|---|
 | Campaign type | **Search only** | Performance Max, Display, Shopping, Video, Demand Gen, App |
-| Operation | Create (plus delete via `--replace`) | Update, pause, enable, change budgets, edit ads |
+| Operation | Create (CLI); via MCP: update budgets, pause/enable, add negatives | Editing ads, bulk restructuring |
 | Bidding | `maximize_clicks`, `manual_cpc` | tCPA, tROAS, Maximize conversions, portfolio strategies |
 | Keywords | Exact match + negatives | Phrase, positive broad, shared sets |
 | Structure | One ad group, one RSA | Multiple ad groups or ads per run |
@@ -102,18 +112,37 @@ real money. A small, well-tested write path beats a broad, shaky one.
 Contributions extending this are welcome — see
 [Contributing](#12-contributing) — provided they keep the safety model intact.
 
-## 2c. Audit an account in one command
+## 2c. Connect it to Claude Code
+
+```bash
+pipx install git+https://github.com/monsieurgoodmood/google-ads-mcp-plus.git
+
+claude mcp add google-ads-plus \
+  --env GOOGLE_ADS_DEVELOPER_TOKEN=your_token \
+  --env GOOGLE_ADS_ALLOWED_CUSTOMERS=1234567890 \
+  -- google-ads-mcp-plus
+```
+
+Then just ask: *"audit account 1234567890 over the last 60 days"*. Writes stay
+disabled until you set `GOOGLE_ADS_MCP_ENABLE_WRITES=true`. Full guide: [`docs/mcp-server.md`](docs/mcp-server.md).
+
+The repo ships a [`CLAUDE.md`](CLAUDE.md) that Claude Code reads automatically —
+it explains every tool, the two-phase write flow, audit interpretation, and a
+GAQL cookbook, so the agent knows how to drive the account safely without being
+told each time.
+
+## 2d. Audit an account from the CLI
 
 Once credentials are set up ([`docs/setup-oauth.md`](docs/setup-oauth.md)):
 
 ```bash
-python src/audit/audit_account.py --customer-id 1234567890
+google-ads-plus-audit --customer-id 1234567890
 ```
 
 Client-ready Markdown report over 90 days:
 
 ```bash
-python src/audit/audit_account.py --customer-id 1234567890 \
+google-ads-plus-audit --customer-id 1234567890 \
   --days 90 --format markdown --output audit.md
 ```
 
@@ -171,13 +200,13 @@ cp config.example.yaml config.yaml        # config.yaml is gitignored
 # edit config.yaml with YOUR account, budget, keywords, ad copy…
 
 # offline content check (no credentials):
-python src/write_layer/create_campaign.py --config config.yaml --validate-only
+google-ads-plus-campaign --config config.yaml --validate-only
 
 # dry run (reads the account, resolves geo + language, writes nothing):
-python src/write_layer/create_campaign.py --config config.yaml --dry-run
+google-ads-plus-campaign --config config.yaml --dry-run
 
 # create everything, PAUSED:
-python src/write_layer/create_campaign.py --config config.yaml --live
+google-ads-plus-campaign --config config.yaml --live
 ```
 Then open the Google Ads UI, review, and **un-pause when you are ready**. See
 [`docs/write-layer.md`](docs/write-layer.md) for every flag.
@@ -246,7 +275,7 @@ The one thing Apache-2.0 asks in return is **attribution**: if you redistribute
 this code or a derivative of it, keep the copyright headers and include a copy
 of the **[NOTICE](./NOTICE)** file. That is the whole obligation.
 
-> **Author:** Arthur Choisnet / ByteBerry Analytics LLC —
+> **Author:** ByteBerry Analytics LLC —
 > [@monsieurgoodmood](https://github.com/monsieurgoodmood)
 > Copyright 2026. Originally published at
 > `https://github.com/monsieurgoodmood/google-ads-mcp-plus`.

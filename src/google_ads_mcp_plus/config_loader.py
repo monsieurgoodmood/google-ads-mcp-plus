@@ -1,4 +1,4 @@
-# Copyright 2026 Arthur Choisnet / ByteBerry Analytics LLC
+# Copyright 2026 ByteBerry Analytics LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -30,8 +30,7 @@ from typing import Any, Dict, List
 
 import yaml
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import validators  # noqa: E402  (sibling module)
+from . import validators  # noqa: E402  (sibling module)
 
 
 class ConfigError(Exception):
