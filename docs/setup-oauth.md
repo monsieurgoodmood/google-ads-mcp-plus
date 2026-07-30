@@ -53,6 +53,37 @@ In **APIs & Services → OAuth consent screen**:
 If you skip this you get **"app blocked / access denied"** at the consent step,
 because an app in "Testing" only allows listed test users.
 
+### ⚠️ Publish the app, or you will re-authenticate every 7 days
+
+This is the single most annoying thing about this setup, and almost nobody
+warns you about it.
+
+While the **Publishing status** is **Testing**, Google **expires your refresh
+token after 7 days**. Everything works, then one morning it doesn't — with no
+change on your side. The symptoms:
+
+* `invalid_grant` / `Token has been expired or revoked`
+* the MCP server or CLI suddenly failing to authenticate
+* `gcloud auth application-default print-access-token` failing
+
+The fix is permanent and takes a minute: in **APIs & Services → OAuth consent
+screen**, change the publishing status from **Testing** to **In production**.
+
+> For a Desktop client used by your own organisation, moving to production does
+> **not** trigger Google's verification review as long as you only request
+> scopes for APIs you own access to. Verification is required for sensitive
+> scopes on apps distributed to the general public — not for a client you
+> authenticate with yourself.
+
+Leave it in Testing and you will run `gcloud auth application-default login`
+every week — and so will anyone you share this tool with. That friction is
+usually what makes people abandon a working setup.
+
+If your token has **already** expired, there is no shortcut: the refresh token
+is gone and gcloud's own legacy credentials are not registered for the
+`adwords` scope (`restricted_client: Unregistered scope`). Re-run the login in
+step 4 with the same client file, then publish the app so it does not recur.
+
 ## 4. Generate ADC with the right scopes
 
 Download your `CLIENT.json` first, then:
@@ -110,9 +141,13 @@ to the Windows browser.
 
 ### Other traps
 
-* ⚠️ With `--client-id-file`, the correct flag is **`--no-browser`**, *not*
-  `--no-launch-browser`. (Different gcloud code paths; the latter errors out
-  with a custom client.)
+* ⚠️ With `--client-id-file`, the correct flag is **`--no-browser`**. Recent
+  gcloud versions reject `--no-launch-browser` outright here and tell you to
+  replace it. Without either flag on a headless/WSL machine, `xdg-open` fails
+  for lack of a browser — but gcloud still prints the URL and opens its
+  listener on `localhost:8085`, so you can simply paste that URL into a
+  browser on the same machine. Under WSL2, Windows shares `localhost`, so the
+  redirect completes by itself and there is nothing to copy back.
 * ⚠️ Run this in a **real interactive terminal**. In a non-interactive or agent
   shell you cannot paste the code back and you get `EOFError`.
 * ⚠️ If you see `Error 400: redirect_uri_mismatch`, your OAuth client is not of
@@ -234,6 +269,8 @@ matches, and geo + language resolved — without writing anything.
 | --- | --- |
 | Refused on the `adwords` scope | Using the default gcloud client — create your own Desktop client (step 1). |
 | `access blocked` / consent denied | Your email is not a **test user** (step 3). |
+| `invalid_grant` / token revoked after about a week | The consent screen is still in **Testing**, which expires refresh tokens every 7 days. Re-run step 4, then publish the app (step 3). |
+| `restricted_client: Unregistered scope` | You are trying to reuse gcloud's own credentials. They are not registered for `adwords` — you must use your own OAuth client. |
 | `EOFError` during login | Non-interactive shell — run in a real terminal (step 4). |
 | `redirect_uri_mismatch` | OAuth client is not type **Desktop app** (step 1). |
 | **Cannot find API Center anywhere** | You are in a regular Ads account. The API Center only exists on a **manager (MCC)** account (step 6a). |

@@ -173,9 +173,11 @@ enabled, **your own OAuth Desktop client** (the default gcloud client is blocked
 for the `adwords` scope), and a developer token with **Basic** access (a
 test-only token cannot touch production accounts).
 
-The OAuth setup has real, non-obvious traps — the API Center only exists on
-**manager (MCC)** accounts, and `--no-browser` prints a *second command*, not a
-link. All of it is documented step by step in
+The OAuth setup has real, non-obvious traps: the API Center only exists on
+**manager (MCC)** accounts, `--no-browser` prints a *second command* rather than
+a link, and — the one that bites everyone — an OAuth consent screen left in
+**Testing** expires your refresh token **every 7 days**. All of it is documented
+step by step in
 **[docs/setup-oauth.md](docs/setup-oauth.md)**. Read that first; it will save you
 an afternoon.
 
